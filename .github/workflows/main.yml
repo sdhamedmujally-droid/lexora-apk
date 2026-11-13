@@ -1,0 +1,133 @@
+
+الاسم: بناء تطبيق Lexora لنظام Android (Capacitor)
+
+على:
+  دفع:
+    الفروع: [ "الرئيسي", "الرئيسي" ]
+  workflow_dispatch:
+
+الأذونات:
+  المحتويات: اكتب
+
+وظائف:
+  build-android-apk:
+    الاسم: إنشاء وتوقيع تطبيق Lexora APK
+    يعمل على: ubuntu-latest
+
+    خطوات:
+      - الاسم: 1. مستودع التحقق
+        يستخدم: actions/checkout@v4
+
+      - الاسم: 2. إعداد Node.js 20
+        يستخدم: actions/setup-node@v4
+        مع:
+          إصدار العقدة: '20'
+
+      - الاسم: 3. إعداد Java JDK 17 (مطلوب لـ Capacitor 6 و Gradle)
+        يستخدم: actions/setup-java@v4
+        مع:
+          التوزيع: 'temurin'
+          java-version: '17'
+
+      - الاسم: 4. إعداد حزمة تطوير البرامج لنظام Android
+        يستخدم: android-actions/setup-android@v3
+
+      - الاسم: 5. تجهيز أصول الويب (www/) وتثبيت كابيتور
+        تشغيل: |
+          mkdir -p www/assets
+          cp -f index.html words_data.js lexora_extra_data.js sw.js manifest.webmanifest icon.svg www/
+          إذا كان الملف icon-192.png موجودًا، فانسخه إلى الموقع www/.
+          إذا كان الملف icon-512.png موجودًا، فانسخه إلى الموقع www/.
+          cp -rf assets/* www/assets/
+          تثبيت npm
+
+      - الاسم: 6. إضافة ومزامنة المكثف على منصة أندرويد
+        تشغيل: |
+          إذا لم يكن المجلد "android" موجودًا، فقم بما يلي:
+            إضافة غطاء npx لنظام Android
+          fi
+          مزامنة الالتقاط npx لنظام أندرويد
+
+      - الاسم: 7. إنشاء أيقونات تطبيقات أندرويد وتكوين أذونات الصوت/الشبكة لـ WebView
+        تشغيل: |
+          # إنشاء جميع أيقونات ميب ماب لنظام أندرويد من icon-512.png إذا كان @capacitor/assets متاحًا
+          إذا كان الملف icon-512.png موجودًا، فقم بما يلي:
+            mkdir -p assets-src
+            cp -f icon-512.png assets-src/icon.png
+            cp -f icon-512.png assets-src/splash.png
+            npx capacitor-assets generate --android --assetPath assets-src || true
+          fi
+
+          # تأكد من أن ملف AndroidManifest.xml يسمح بمرور البيانات بنص عادي ومنح أذونات الإنترنت لبث الصوت/التخزين المؤقت
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          إذا كان الملف "$MANIFEST" موجودًا، فسيتم تنفيذ ما يلي:
+            إذا لم يتم العثور على عبارة "usesCleartextTraffic" في ملف البيان ($MANIFEST)؛
+              sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' "$MANIFEST"
+            fi
+          fi
+
+          # قم بتعديل ملف MainActivity.java بحيث يسمح Android WebView بتشغيل الصوت بشكل متواصل في القصص والمحادثات دون الحاجة إلى نقرات متكررة على الشاشة
+          MAIN_ACT=$(find android/app/src/main/java -name "MainActivity.java" | head -n 1)
+          إذا كان [ -n "$MAIN_ACT" ] && [ -f "$MAIN_ACT" ];
+            cat << 'JAVA_EOF' > "$MAIN_ACT"
+          الحزمة com.siddiq.lexora؛
+
+          استيراد android.os.Bundle;
+          استيراد android.webkit.WebSettings;
+          استيراد android.webkit.WebView;
+          استيراد com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  حاول {
+                      WebView webView = this.bridge.getWebView();
+                      إذا كان (webView != null) {
+                          WebSettings settings = webView.getSettings();
+                          settings.setMediaPlaybackRequiresUserGesture(false);
+                          settings.setDomStorageEnabled(true);
+                          settings.setDatabaseEnabled(true);
+                          settings.setJavaScriptEnabled(true);
+                          settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                      }
+                  } catch (تم تجاهل الاستثناء) {}
+              }
+          }
+          JAVA_EOF
+          fi
+
+      - الاسم: 8. إنشاء ملف APK باستخدام Gradle وتوقيع ملف APK للإصدار
+        تشغيل: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug assembleRelease
+
+          mkdir -p ../apk-output
+          cp app/build/outputs/apk/debug/app-debug.apk ../apk-output/Lexora-English-Lab-Debug.apk
+
+          # قم بإنشاء ملف المفاتيح وتوقيع ملف APK الخاص بالإصدار لضمان تثبيته بسلاسة على أي هاتف يعمل بنظام Android
+          keytool -genkey -v -keystore lexora-release.keystore -alias lexora -keyalg RSA -keysize 2048 -validity 10000 -storepass lexora123 -keypass lexora123 -dname "CN=Siddiq, OU=Lexora, O=LexoraLab, L=Sanaa, S=Sanaa, C=YE"
+          UNSIGNED_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          إذا كان الملف "$UNSIGNED_APK" موجودًا، فسيتم تنفيذ ما يلي:
+            zipalign -v -p 4 "$UNSIGNED_APK" app-release-aligned.apk
+            apksigner sign --ks lexora-release.keystore --ks-pass pass:lexora123 --key-pass pass:lexora123 --out ../apk-output/Lexora-English-Lab.apk app-release-aligned.apk
+          وإلا
+            cp app/build/outputs/apk/debug/app-debug.apk ../apk-output/Lexora-English-Lab.apk
+          fi
+
+      - الاسم: 9. تحميل ملف APK جاهز للتثبيت إلى GitHub Actions Artifacts
+        يستخدم: actions/upload-artifact@v4
+        مع:
+          الاسم: Lexora-English-Lab-APK
+          المسار: apk-output/*.apk
+          إذا لم يتم العثور على ملفات: خطأ
+
+      - الاسم: 10. نشر ملف APK على إصدارات GitHub (رابط تنزيل مباشر)
+        يستخدم: softprops/action-gh-release@v2
+        إذا كان اسم الحدث على GitHub هو 'push' أو 'workflow_dispatch'
+        مع:
+          tag_name: v1.0.${{ github.run_number }}
+          الاسم: "Lexora English Lab APK (Build #${{ github.run_number }})"
+          body: "نسخة تطبيق الأندرويد اللطيف للتثبيت على الهاتف (Lexora-English-Lab.apk) — تتضمن 5000 كلمة أكسفورد، موسعة تعليمات (60 درساً)، التصاريف الثلاثة (1255 تأثير)، 500 قصة و500 نقاش مع حفظ الصوت للأوفلاين."
+          الملفات: apk-output/*.apk
