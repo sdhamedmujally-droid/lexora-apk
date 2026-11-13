@@ -1,0 +1,22 @@
+{
+  "name": "lexora-english-lab",
+  "version": "1.0.0",
+  "description": "Lexora | English Vocabulary, Grammar, 500 Stories & 500 Conversations Lab (Oxford 5000 A1-C1)",
+  "private": true,
+  "scripts": {
+    "build": "mkdir -p www/assets && cp -f index.html words_data.js lexora_extra_data.js sw.js manifest.webmanifest icon.svg icon-192.png icon-512.png www/ && cp -f assets/* www/assets/",
+    "cap:init": "npx cap add android || true",
+    "cap:sync": "npm run build && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor-community/text-to-speech": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Lexora | English Vocabulary Lab (5000 Words)",
+  "short_name": "Lexora",
+  "description": "5000 كلمة إنجليزية من قوائم أكسفورد (A1-C1) مع النطق الأمريكي والبريطاني والأمثلة المترجمة والاختبارات الذكية.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8f9f6",
+  "theme_color": "#17715b",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
